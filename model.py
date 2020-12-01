@@ -1,6 +1,7 @@
 from data import DbdImageDataset, get_transform, collate_fn, UnNormalize
 import torch
 import torchvision
+
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torch.utils.data import DataLoader
 from image_handler import visualize
@@ -22,11 +23,15 @@ def train_one_epoch(model, optimizer, data_loader, device):
         targets = [{k: v.to(device) for k, v in t.items()} for t in targs]
         loss_dict = model(images, targets)
 
+        print(loss_dict)
+
         losses = sum(loss for loss in loss_dict.values())
 
         optimizer.zero_grad()
         losses.backward()
         optimizer.step()
+
+        print(losses)
 
         break
 
@@ -45,36 +50,54 @@ def evaluate(model, data_loader, device):
         images = list(img.to(device) for img in images)
 
         outputs = model(images)
+        print(targets)
+        print(outputs)
 
         outputs = [{k: v.to(device) for k, v in t.items()} for t in outputs]
         res = {target["image_id"].item(): output for target, output in zip(targets, outputs)}
-
+        # print(res)
         img = images[0].permute(1, 2, 0)
 
         visualize(unnorm(img), res[0]['boxes'].tolist(), res[0]['labels'].tolist())
         break
 
 
-if __name__ == '__main__':
+def main(test_only=True):
     print('Object detection task on dbd set.')
-    model = init_model()
-    model.to(device)
-    params = [p for p in model.parameters() if p.requires_grad]
-    optimizer = torch.optim.SGD(params, lr=0.005,
-                                momentum=0.9, weight_decay=0.0005)
-    # and a learning rate scheduler
-    # lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
-    #                                                step_size=3,
-    #                                                gamma=0.1)
-    #
-    # num_epochs = 10
+    print('Datasets preparation...')
     transform = get_transform(train=False)
 
+    # TODO: разъеденить train и test sets.
+    # dataset = DbdImageDataset('data/', transform)
     dataset_test = DbdImageDataset('data/', transform)
 
-    data_loader = DataLoader(
+    # data_loader = DataLoader(
+    #     dataset, batch_size=1, shuffle=False, num_workers=4,
+    #     collate_fn=collate_fn)
+
+    data_loader_test = DataLoader(
         dataset_test, batch_size=1, shuffle=False, num_workers=4,
         collate_fn=collate_fn)
 
-    # train_one_epoch(model, optimizer, data_loader, device)
-    evaluate(model, data_loader, device=device)
+    print('Creating model...')
+    model = init_model()
+    model.to(device)
+
+    params = [p for p in model.parameters() if p.requires_grad]
+    optimizer = torch.optim.SGD(params, lr=0.005,
+                                momentum=0.9, weight_decay=0.0005)
+
+    # lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
+    #                                                step_size=3,
+    #
+    #                                                gamma=0.1)
+
+    train_one_epoch(model, optimizer, data_loader_test, device=device)
+
+    if test_only:
+        evaluate(model, data_loader_test, device=device)
+        return
+
+
+if __name__ == '__main__':
+    main(test_only=False)
