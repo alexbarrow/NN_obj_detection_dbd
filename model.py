@@ -44,22 +44,27 @@ def train_one_epoch(model, optimizer, data_loader, device):
 @torch.no_grad()
 def evaluate(model, data_loader, device):
     unnorm = UnNormalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
-
+    i = 0
     model.eval()
     for images, targets in data_loader:
+        i += 1
         images = list(img.to(device) for img in images)
+        print(targets)
 
         outputs = model(images)
-        print(targets)
-        print(outputs)
 
         outputs = [{k: v.to(device) for k, v in t.items()} for t in outputs]
         res = {target["image_id"].item(): output for target, output in zip(targets, outputs)}
+        print('CHECK 1__________________________________________________)')
         # print(res)
-        img = images[0].permute(1, 2, 0)
 
-        visualize(unnorm(img), res[0]['boxes'].tolist(), res[0]['labels'].tolist())
-        break
+        for key, img in zip(res.keys(), images):
+            print(res[key]['boxes'].tolist())
+            img = img.permute(1, 2, 0)
+            visualize(unnorm(img), res[key]['boxes'].tolist(), res[key]['labels'].tolist())
+
+        if i == 2:
+            break
 
 
 def main(test_only=True):
@@ -76,7 +81,7 @@ def main(test_only=True):
     #     collate_fn=collate_fn)
 
     data_loader_test = DataLoader(
-        dataset_test, batch_size=1, shuffle=False, num_workers=4,
+        dataset_test, batch_size=2, shuffle=False, num_workers=4,
         collate_fn=collate_fn)
 
     print('Creating model...')
@@ -92,7 +97,7 @@ def main(test_only=True):
     #
     #                                                gamma=0.1)
 
-    train_one_epoch(model, optimizer, data_loader_test, device=device)
+    # train_one_epoch(model, optimizer, data_loader_test, device=device)
 
     if test_only:
         evaluate(model, data_loader_test, device=device)
@@ -100,4 +105,4 @@ def main(test_only=True):
 
 
 if __name__ == '__main__':
-    main(test_only=False)
+    main(test_only=True)
