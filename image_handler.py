@@ -9,29 +9,6 @@ TEXT_COLOR = (255, 255, 255)  # White
 id_to_labels = {1: 'killer', 2: 'surv'}
 
 
-# def xyxy2xywh(bbox):
-#     """Convert ``xyxy`` style bounding boxes to ``xywh`` style for COCO
-#     evaluation.
-#     Args:
-#         bbox (numpy.ndarray): The bounding boxes, shape (4, ), in
-#             ``xyxy`` order.
-#     Returns:
-#         list[float]: The converted bounding boxes, in ``xywh`` order.
-#     """
-#
-#     _bbox = bbox.tolist()
-#     return [
-#         _bbox[0],
-#         _bbox[1],
-#         _bbox[2] - _bbox[0],
-#         _bbox[3] - _bbox[1],
-#     ]
-
-# def xyxy2xywh(bbox):
-#     xmin, ymin, xmax, ymax = boxes.unbind(1)
-#     return torch.stack((xmin, ymin, xmax - xmin, ymax - ymin), dim=1)
-
-
 def get_bb_list(root_path):
     tree = ET.ElementTree(file=root_path)
 

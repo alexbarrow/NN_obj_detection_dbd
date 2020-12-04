@@ -3,8 +3,9 @@ import cv2
 import torch
 import numpy as np
 
+from eval import CocoTypeEvaluator, get_coco_api_from_dataset
 from torch.utils.data import DataLoader
-from metrics import iou_metric
+
 from albumentations.pytorch import ToTensorV2
 
 from image_handler import get_bb_list, visualize
@@ -82,13 +83,15 @@ class DbdImageDataset(object):
         class_labels = torch.as_tensor(class_labels, dtype=torch.int64)
         bb = torch.as_tensor(bb, dtype=torch.float32)
         image_id = torch.tensor([idx])
-        # area = (bb[:, 3] - bb[:, 1]) * (bb[:, 2] - bb[:, 0])
+        area = (bb[:, 3] - bb[:, 1]) * (bb[:, 2] - bb[:, 0])
+        iscrowd = torch.zeros_like(area, dtype=torch.int64)
 
         target = {
             "boxes": bb,
             "labels": class_labels,
             "image_id": image_id,
-            # "area": area
+            "area": area,
+            'iscrowd': iscrowd
         }
 
         return img, target
@@ -102,20 +105,26 @@ if __name__ == '__main__':
     transform = get_transform(train=False)
     dataset = DbdImageDataset('data/', transform)
 
-    # image_0, target_0 = dataset[3]
+    image_0, target_0 = dataset[3]
     # img = image_0.permute(1, 2, 0)
     # visualize(unnorm(img), target_0['boxes'], target_0['labels'].tolist())
+
+    print(target_0)
 
     data_loader = DataLoader(
         dataset, batch_size=2, shuffle=True, num_workers=4,
         collate_fn=collate_fn)
 
-    for image, target in data_loader:
-        images = list(image for image in image)
-        targets = [{k: v for k, v in t.items()} for t in target]
-        print(targets)
-        image_0, target_0 = images[0], targets[0]
-
-        image_0 = image_0.permute(1, 2, 0)
-        visualize(unnorm(image_0), target_0['boxes'], target_0['labels'].tolist())
-        break
+    # for image, target in data_loader:
+    #     images = list(image for image in image)
+    #     targets = [{k: v for k, v in t.items()} for t in target]
+    #     print(targets)
+    #     image_0, target_0 = images[0], targets[0]
+    #
+    #     image_0 = image_0.permute(1, 2, 0)
+    #     visualize(unnorm(image_0), target_0['boxes'], target_0['labels'].tolist())
+    #     break
+    coco_dataset = get_coco_api_from_dataset(data_loader.dataset)
+    coco_evaluator = CocoTypeEvaluator(coco_dataset)
+    print('Ready!')
+    print(coco_evaluator.img_ids)

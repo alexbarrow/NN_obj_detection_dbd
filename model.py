@@ -1,10 +1,12 @@
 from data import DbdImageDataset, get_transform, collate_fn, UnNormalize
 import torch
 import torchvision
+from eval import CocoTypeEvaluator, get_coco_api_from_dataset
 
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torch.utils.data import DataLoader
 from image_handler import visualize
+import time
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 
@@ -46,25 +48,36 @@ def evaluate(model, data_loader, device):
     unnorm = UnNormalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
     i = 0
     model.eval()
+
+    coco_dataset = get_coco_api_from_dataset(data_loader.dataset)
+    coco_evaluator = CocoTypeEvaluator(coco_dataset)
+
     for images, targets in data_loader:
         i += 1
         images = list(img.to(device) for img in images)
-        print(targets)
 
         outputs = model(images)
 
         outputs = [{k: v.to(device) for k, v in t.items()} for t in outputs]
         res = {target["image_id"].item(): output for target, output in zip(targets, outputs)}
-        print('CHECK 1__________________________________________________)')
-        # print(res)
+        evaluator_time = time.time()
 
-        for key, img in zip(res.keys(), images):
-            print(res[key]['boxes'].tolist())
-            img = img.permute(1, 2, 0)
-            visualize(unnorm(img), res[key]['boxes'].tolist(), res[key]['labels'].tolist())
+        coco_evaluator.update(res)
+
+        print('DONE (t={:0.2f}s)'.format(time.time() - evaluator_time))
+
+        # for key, img in zip(res.keys(), images):
+        #     img = img.permute(1, 2, 0)
+        #     visualize(unnorm(img), res[key]['boxes'].tolist(), res[key]['labels'].tolist())
 
         if i == 2:
             break
+
+    coco_evaluator.synchronize_between_processes()
+    print('DID IT AGAIN!')
+    coco_evaluator.accumulate()
+    print('DID IT AGAIN!')
+    coco_evaluator.summarize()
 
 
 def main(test_only=True):
