@@ -31,6 +31,7 @@ class CocoTypeEvaluator(object):
         coco_eval = self.coco_eval
 
         coco_eval.cocoDt = coco_dt
+
         coco_eval.params.imgIds = list(img_ids)
         img_ids, eval_imgs = evaluate(coco_eval)
 
@@ -67,12 +68,36 @@ class CocoTypeEvaluator(object):
         self.coco_eval.summarize()
 
     def synchronize_between_processes(self):
-        # TODO: сделать список из img_ids
-        self.coco_eval.evalImgs = self.eval_imgs
-        self.coco_eval.params.imgIds = self.img_ids
+        img_ids, eval_imgs = merge(self.img_ids, self.eval_imgs)
+        img_ids = list(img_ids)
+        eval_imgs = list(eval_imgs.flatten())
+
+        self.coco_eval.evalImgs = eval_imgs
+        self.coco_eval.params.imgIds = img_ids
         self.coco_eval._paramsEval = copy.deepcopy(self.coco_eval.params)
-        print(self.coco_eval._paramsEval.areaRng)
-        print(self.coco_eval._paramsEval.imgIds)
+
+
+def merge(img_ids, eval_imgs):
+    all_img_ids = [img_ids]
+    all_eval_imgs = eval_imgs
+
+    merged_img_ids = []
+    for p in all_img_ids:
+        merged_img_ids.extend(p)
+
+    merged_eval_imgs = []
+    for p in all_eval_imgs:
+        merged_eval_imgs.append(p)
+
+    merged_img_ids = np.array(merged_img_ids)
+    merged_eval_imgs = np.concatenate(merged_eval_imgs, 2)
+
+    # keep only unique (and in sorted order) images
+    merged_img_ids, idx = np.unique(merged_img_ids, return_index=True)
+
+    merged_eval_imgs = merged_eval_imgs[..., idx]
+
+    return merged_img_ids, merged_eval_imgs
 
 
 def createIndex(self):
@@ -130,6 +155,7 @@ def loadRes(self, resFile):
             ann['area'] = bb[2] * bb[3]
             ann['id'] = id + 1
             ann['iscrowd'] = 0
+    # print(anns)
 
     # print('DONE (t={:0.2f}s)'.format(time.time()- tic))
 
@@ -175,8 +201,8 @@ def evaluate(self):
     ]
     # print(evalImgs)
     # this is NOT in the pycocotools code, but could be done outside
-    # evalImgs = np.asarray(evalImgs).reshape(len(catIds), len(p.areaRng), len(p.imgIds))
-    # self._paramsEval = copy.deepcopy(self.params)
+    evalImgs = np.asarray(evalImgs).reshape((len(catIds), len(p.areaRng), len(p.imgIds)))
+    self._paramsEval = copy.deepcopy(self.params)
     # toc = time.time()
     # print('DONE (t={:0.2f}s).'.format(toc-tic))
     return p.imgIds, evalImgs

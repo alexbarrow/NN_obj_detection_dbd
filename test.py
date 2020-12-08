@@ -19,6 +19,5 @@ import numpy as np
 
 # A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
 
-a = [[1, 2], [3,4]]
-b = set(a)
-print(b)
+a = [[1, 4], [3,2], [0, 5]]
+print([item for sublist in a for item in sublist])

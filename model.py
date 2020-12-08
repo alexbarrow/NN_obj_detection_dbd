@@ -70,7 +70,7 @@ def evaluate(model, data_loader, device):
         #     img = img.permute(1, 2, 0)
         #     visualize(unnorm(img), res[key]['boxes'].tolist(), res[key]['labels'].tolist())
 
-        if i == 2:
+        if i == 1:
             break
 
     coco_evaluator.synchronize_between_processes()
