@@ -6,6 +6,7 @@ from eval import CocoTypeEvaluator, get_coco_api_from_dataset
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torch.utils.data import DataLoader
 from image_handler import visualize
+
 import time
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
@@ -20,12 +21,13 @@ def init_model(classes=3):
 
 def train_one_epoch(model, optimizer, data_loader, device):
     model.train()
+    i = 0
     for imgs, targs in data_loader:
+        # TODO: visualizing of image without boxes during train
+        i += 1
         images = list(image.to(device) for image in imgs)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targs]
         loss_dict = model(images, targets)
-
-        print(loss_dict)
 
         losses = sum(loss for loss in loss_dict.values())
 
@@ -33,9 +35,10 @@ def train_one_epoch(model, optimizer, data_loader, device):
         losses.backward()
         optimizer.step()
 
+        # TODO: losses logger
         print(losses)
-
-        break
+        if i == 10:
+            break
 
         # if lr_scheduler is not None:
         #     lr_scheduler.step()
@@ -46,37 +49,29 @@ def train_one_epoch(model, optimizer, data_loader, device):
 @torch.no_grad()
 def evaluate(model, data_loader, device):
     unnorm = UnNormalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
-    i = 0
+    evaluator_time = time.time()
     model.eval()
 
     coco_dataset = get_coco_api_from_dataset(data_loader.dataset)
     coco_evaluator = CocoTypeEvaluator(coco_dataset)
 
     for images, targets in data_loader:
-        i += 1
         images = list(img.to(device) for img in images)
 
         outputs = model(images)
 
         outputs = [{k: v.to(device) for k, v in t.items()} for t in outputs]
         res = {target["image_id"].item(): output for target, output in zip(targets, outputs)}
-        evaluator_time = time.time()
-
-        coco_evaluator.update(res)
-
-        print('DONE (t={:0.2f}s)'.format(time.time() - evaluator_time))
 
         # for key, img in zip(res.keys(), images):
         #     img = img.permute(1, 2, 0)
         #     visualize(unnorm(img), res[key]['boxes'].tolist(), res[key]['labels'].tolist())
 
-        if i == 1:
-            break
+        coco_evaluator.update(res)
 
+    print('EVALUATION TIME: (t={:0.2f}s)'.format(time.time() - evaluator_time))
     coco_evaluator.synchronize_between_processes()
-    print('DID IT AGAIN!')
     coco_evaluator.accumulate()
-    print('DID IT AGAIN!')
     coco_evaluator.summarize()
 
 
@@ -85,16 +80,15 @@ def main(test_only=True):
     print('Datasets preparation...')
     transform = get_transform(train=False)
 
-    # TODO: разъеденить train и test sets.
-    # dataset = DbdImageDataset('data/', transform)
-    dataset_test = DbdImageDataset('data/', transform)
+    dataset = DbdImageDataset('data/', transform)
+    dataset_test = DbdImageDataset('data/val', transform)
 
-    # data_loader = DataLoader(
-    #     dataset, batch_size=1, shuffle=False, num_workers=4,
-    #     collate_fn=collate_fn)
+    data_loader = DataLoader(
+        dataset, batch_size=4, shuffle=False, num_workers=4,
+        collate_fn=collate_fn)
 
     data_loader_test = DataLoader(
-        dataset_test, batch_size=2, shuffle=False, num_workers=4,
+        dataset_test, batch_size=1, shuffle=False, num_workers=4,
         collate_fn=collate_fn)
 
     print('Creating model...')
@@ -109,13 +103,14 @@ def main(test_only=True):
     #                                                step_size=3,
     #
     #                                                gamma=0.1)
+    # TODO: train loop
+    train_one_epoch(model, optimizer, data_loader, device=device)
+    evaluate(model, data_loader_test, device=device)
 
-    # train_one_epoch(model, optimizer, data_loader_test, device=device)
-
-    if test_only:
-        evaluate(model, data_loader_test, device=device)
-        return
+    # if test_only:
+    #     evaluate(model, data_loader_test, device=device)
+    #     return
 
 
 if __name__ == '__main__':
-    main(test_only=True)
+    main()

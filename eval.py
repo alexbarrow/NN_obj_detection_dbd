@@ -4,7 +4,6 @@ from collections import defaultdict
 import copy
 import numpy as np
 import torch
-import pickle
 
 
 def xyxy2xywh(bxes):
@@ -27,7 +26,8 @@ class CocoTypeEvaluator(object):
         self.img_ids.append(img_ids)
 
         results = self.prepare(predictions)
-        coco_dt = loadRes(self.coco_gt, results)
+        coco_dt = loadRes(self.coco_gt, results) if results else COCO()
+
         coco_eval = self.coco_eval
 
         coco_eval.cocoDt = coco_dt
@@ -137,11 +137,7 @@ def loadRes(self, resFile):
     res = COCO()
     res.dataset['images'] = [img for img in self.dataset['images']]
 
-    # print('Loading and preparing results...')
-    # tic = time.time()
     anns = resFile
-    assert type(anns) == list, 'results in not an array of objects'
-
     annsImgIds = [ann['image_id'] for ann in anns]
 
     assert set(annsImgIds) == (set(annsImgIds) & set(self.getImgIds())), \
@@ -155,9 +151,8 @@ def loadRes(self, resFile):
             ann['area'] = bb[2] * bb[3]
             ann['id'] = id + 1
             ann['iscrowd'] = 0
-    # print(anns)
-
-    # print('DONE (t={:0.2f}s)'.format(time.time()- tic))
+    else:
+        return res
 
     res.dataset['annotations'] = anns
     createIndex(res)
@@ -169,7 +164,6 @@ def evaluate(self):
     Run per image evaluation on given images and store results (a list of dict) in self.evalImgs
     :return: None
     '''
-    # tic = time.time()
     # print('Running per image evaluation...')
     p = self.params
     p.iouType = 'bbox'
@@ -199,12 +193,9 @@ def evaluate(self):
         for areaRng in p.areaRng
         for imgId in p.imgIds
     ]
-    # print(evalImgs)
-    # this is NOT in the pycocotools code, but could be done outside
+
     evalImgs = np.asarray(evalImgs).reshape((len(catIds), len(p.areaRng), len(p.imgIds)))
     self._paramsEval = copy.deepcopy(self.params)
-    # toc = time.time()
-    # print('DONE (t={:0.2f}s).'.format(toc-tic))
     return p.imgIds, evalImgs
 
 
