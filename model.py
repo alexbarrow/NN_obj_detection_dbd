@@ -113,4 +113,6 @@ def main(test_only=True):
 
 
 if __name__ == '__main__':
-    main()
+    # main()
+    model = init_model()
+    print(model)

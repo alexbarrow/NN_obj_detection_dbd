@@ -5,3 +5,7 @@ __pycache__/
 data/boxes/
 
 data/resize_data/
+
+data/val/boxes/
+
+data/val/resize_data/
