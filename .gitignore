@@ -9,3 +9,5 @@ data/resize_data/
 data/val/boxes/
 
 data/val/resize_data/
+
+logs/

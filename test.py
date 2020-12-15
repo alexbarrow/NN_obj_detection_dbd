@@ -19,5 +19,8 @@ import numpy as np
 
 # A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
 
-a = [[1, 4], [3,2], [0, 5]]
-print([item for sublist in a for item in sublist])
+# a = [[1, 4], [3,2], [0, 5]]
+# print([item for sublist in a for item in sublist])
+dicts = {'loss_total': 0, 'lr': 1, 'train_time': 2}
+for key, value in dicts.items():
+    value
