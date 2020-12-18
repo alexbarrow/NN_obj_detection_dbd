@@ -21,6 +21,9 @@ import numpy as np
 
 # a = [[1, 4], [3,2], [0, 5]]
 # print([item for sublist in a for item in sublist])
-dicts = {'loss_total': 0, 'lr': 1, 'train_time': 2}
-for key, value in dicts.items():
-    value
+# edicts = {'loss_total': 0, 'lr': 1, 'train_time': 2}
+# for key, value in dicts.items():
+#     valu
+acc_list = [10, 20, 30]
+for key, value in enumerate(acc_list):
+    print(str(key), value)
