@@ -23,7 +23,6 @@ def init_model(classes=3):
 
 
 def train_one_epoch(model, optimizer, data_loader, device, lr_scheduler=None):
-    print('Start training...')
     sum_loss = AverageMeter()
     ev_time = time.time()
     model.train()
@@ -44,7 +43,6 @@ def train_one_epoch(model, optimizer, data_loader, device, lr_scheduler=None):
         sum_loss.update(losses.detach().item(), batch_size)
 
         if lr_scheduler is not None:
-            # TODO: avg losses
             lr_scheduler.step(metrics=losses)
 
     train_time = time.time() - ev_time
@@ -82,12 +80,13 @@ def evaluate(model, data_loader, device):
     return coco_evaluator.coco_eval.stats
 
 
-def main(num_epochs):
+def main(num_epochs, no_log=False, lr_scheduler_val=True):
     print('Object detection task on dbd set.')
     print('Datasets preparation...')
     transform = get_transform(train=False)
 
-    logger = Logger('pT-pbT-tbl2')
+    if no_log is False:
+        logger = Logger('pT-pbT-tbl2')
 
     dataset = DbdImageDataset('data/', transform)
     dataset_test = DbdImageDataset('data/val', transform)
@@ -123,21 +122,22 @@ def main(num_epochs):
     )
 
     lr_sc = SchedulerClass(optimizer, **scheduler_params)
-    lr_scheduler_val = True
 
     for epoch in range(num_epochs):
-        loss, lr, time = train_one_epoch(model, optimizer, data_loader, device=device, lr_scheduler=None)
+        print('Epoch: {}, Training...'.format(epoch+1))
+        loss, lr, tr_time = train_one_epoch(model, optimizer, data_loader, device=device, lr_scheduler=None)
         acc = evaluate(model, data_loader_test, device=device)
 
         if lr_scheduler_val is not False:
             lr_sc.step(loss.avg)
 
-        logger.update_all({'loss_total': loss.avg, 'lr': lr, 'train_time': time}, epoch+1)
-        logger.update_acc(acc, epoch+1)
-        logger.show_last()
+        if no_log is False:
+            logger.update_all({'loss_total': loss.avg, 'lr': lr, 'train_time': tr_time}, epoch+1)
+            logger.update_acc(acc, epoch+1)
+            logger.show_last()
 
 
 if __name__ == '__main__':
     total_time = time.time()
-    main(14)
+    main(14, no_log=True)
     print('TOTAL TIME: (t={:0.2f}s)'.format(time.time() - total_time))

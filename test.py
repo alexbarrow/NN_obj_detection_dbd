@@ -24,6 +24,9 @@ import numpy as np
 # edicts = {'loss_total': 0, 'lr': 1, 'train_time': 2}
 # for key, value in dicts.items():
 #     valu
-acc_list = [10, 20, 30]
+acc_list = [10, 20, 30, 40, 50, 60]
 for key, value in enumerate(acc_list):
-    print(str(key), value)
+    if key < 3:
+        print('Z')
+    else:
+        print('X')
