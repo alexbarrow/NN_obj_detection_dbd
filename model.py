@@ -12,6 +12,14 @@ import time
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 
+# def load(self, path):
+#     checkpoint = torch.load(path)
+#     self.model.model.load_state_dict(checkpoint['model_state_dict'])
+#     self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+#     self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+#     self.epoch = checkpoint['epoch'] - 1
+
+
 def init_model(classes=3):
     model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True, pretrained_backbone=True,
                                                                  trainable_backbone_layers=1)
@@ -111,8 +119,6 @@ def main(num_epochs, no_log=False, lr_scheduler_val=True):
     params = [p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.AdamW(params, lr=0.001, weight_decay=0.001)
 
-    # lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
-    #                                                step_size=3, gamma=0.1)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau
     scheduler_params = dict(
         mode='min',
@@ -143,6 +149,15 @@ def main(num_epochs, no_log=False, lr_scheduler_val=True):
                                'lr': lr, 'train_time': tr_time}, epoch+1)
             logger.update_acc(acc, epoch+1)
             logger.show_last()
+
+        if epoch > 14 and epoch % 2 == 0:
+            model.eval()
+            torch.save({
+                'model_state_dict': model.model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'scheduler_state_dict': lr_sc.state_dict(),
+                'epoch': epoch+1,
+            }, f'checkpoints/checkpoint-{str(epoch+1).zfill(3)}epoch.bin')
 
 
 if __name__ == '__main__':
