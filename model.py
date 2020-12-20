@@ -23,7 +23,8 @@ def init_model(classes=3):
 
 
 def train_one_epoch(model, optimizer, data_loader, device, lr_scheduler=None):
-    sum_loss = AverageMeter()
+    loss_total, loss_cls, loss_box, loss_obj, loss_rpn = AverageMeter(), AverageMeter(), AverageMeter(),\
+                                                         AverageMeter(), AverageMeter()
     ev_time = time.time()
     model.train()
 
@@ -40,13 +41,17 @@ def train_one_epoch(model, optimizer, data_loader, device, lr_scheduler=None):
         losses.backward()
         optimizer.step()
 
-        sum_loss.update(losses.detach().item(), batch_size)
+        loss_total.update(losses.detach().item(), batch_size)
+        loss_cls.update(loss_dict['loss_classifier'].detach().item(), batch_size)
+        loss_box.update(loss_dict['loss_box_reg'].detach().item(), batch_size)
+        loss_obj.update(loss_dict['loss_objectness'].detach().item(), batch_size)
+        loss_rpn.update(loss_dict['loss_rpn_box_reg'].detach().item(), batch_size)
 
         if lr_scheduler is not None:
             lr_scheduler.step(metrics=losses)
 
     train_time = time.time() - ev_time
-    return sum_loss, optimizer.param_groups[0]["lr"], train_time
+    return loss_total, loss_cls, loss_box, loss_obj, loss_rpn, optimizer.param_groups[0]["lr"], train_time
 
 
 @torch.no_grad()
@@ -108,7 +113,7 @@ def main(num_epochs, no_log=False, lr_scheduler_val=True):
 
     # lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
     #                                                step_size=3, gamma=0.1)
-    SchedulerClass = torch.optim.lr_scheduler.ReduceLROnPlateau
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau
     scheduler_params = dict(
         mode='min',
         factor=0.5,
@@ -121,18 +126,21 @@ def main(num_epochs, no_log=False, lr_scheduler_val=True):
         eps=1e-08
     )
 
-    lr_sc = SchedulerClass(optimizer, **scheduler_params)
+    lr_sc = scheduler(optimizer, **scheduler_params)
 
     for epoch in range(num_epochs):
         print('Epoch: {}, Training...'.format(epoch+1))
-        loss, lr, tr_time = train_one_epoch(model, optimizer, data_loader, device=device, lr_scheduler=None)
+        loss_total, loss_cls, loss_box, loss_obj, loss_rpn, lr, tr_time = \
+            train_one_epoch(model, optimizer, data_loader, device=device, lr_scheduler=None)
         acc = evaluate(model, data_loader_test, device=device)
 
         if lr_scheduler_val is not False:
-            lr_sc.step(loss.avg)
+            lr_sc.step(loss_total.avg)
 
         if no_log is False:
-            logger.update_all({'loss_total': loss.avg, 'lr': lr, 'train_time': tr_time}, epoch+1)
+            logger.update_all({'loss_total': loss_total.avg, 'loss_cls': loss_cls.avg, 'loss_box': loss_box.avg,
+                               'loss_obj': loss_obj.avg, 'loss_rpn': loss_rpn.avg,
+                               'lr': lr, 'train_time': tr_time}, epoch+1)
             logger.update_acc(acc, epoch+1)
             logger.show_last()
 

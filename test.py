@@ -24,9 +24,5 @@ import numpy as np
 # edicts = {'loss_total': 0, 'lr': 1, 'train_time': 2}
 # for key, value in dicts.items():
 #     valu
-acc_list = [10, 20, 30, 40, 50, 60]
-for key, value in enumerate(acc_list):
-    if key < 3:
-        print('Z')
-    else:
-        print('X')
+a = 231.2929918766021729
+print('This is not sparta. This is {:0.6f}.'.format(a))
