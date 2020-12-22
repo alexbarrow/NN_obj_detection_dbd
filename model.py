@@ -8,16 +8,32 @@ from torch.utils.data import DataLoader
 from image_handler import visualize
 from logger import Logger, AverageMeter
 
+import datetime
 import time
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 
 # def load(self, path):
 #     checkpoint = torch.load(path)
-#     self.model.model.load_state_dict(checkpoint['model_state_dict'])
+#     self.model.load_state_dict(checkpoint['model_state_dict'])
 #     self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 #     self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
 #     self.epoch = checkpoint['epoch'] - 1
+
+def prep_data():
+    print('Datasets preparation...')
+    train_transform, valid_transform = get_transform(train=True), get_transform(train=False)
+    dataset = DbdImageDataset('data/', train_transform)
+    dataset_test = DbdImageDataset('data/val', valid_transform)
+
+    data_loader = DataLoader(
+        dataset, batch_size=4, shuffle=True, num_workers=4,
+        collate_fn=collate_fn)
+
+    data_loader_test = DataLoader(
+        dataset_test, batch_size=1, shuffle=False, num_workers=4,
+        collate_fn=collate_fn)
+    return data_loader, data_loader_test
 
 
 def init_model(classes=3):
@@ -37,11 +53,18 @@ def train_one_epoch(model, optimizer, data_loader, device, lr_scheduler=None):
     model.train()
 
     for imgs, targs in data_loader:
+        # unnorm = UnNormalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
         # TODO: visualizing of image without boxes during train
         images = list(image.to(device) for image in imgs)
         batch_size = len(images)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targs]
         loss_dict = model(images, targets)
+
+        # print('target')
+        # print(targets)
+        # for key, img in zip(res.keys(), images):
+        #     img = img.permute(1, 2, 0)
+        #     visualize(unnorm(img), res[key]['boxes'].tolist(), res[key]['labels'].tolist())
 
         losses = sum(loss for loss in loss_dict.values())
 
@@ -59,6 +82,7 @@ def train_one_epoch(model, optimizer, data_loader, device, lr_scheduler=None):
             lr_scheduler.step(metrics=losses)
 
     train_time = time.time() - ev_time
+
     return loss_total, loss_cls, loss_box, loss_obj, loss_rpn, optimizer.param_groups[0]["lr"], train_time
 
 
@@ -95,23 +119,12 @@ def evaluate(model, data_loader, device):
 
 def main(num_epochs, no_log=False, lr_scheduler_val=True):
     print('Object detection task on dbd set.')
-    print('Datasets preparation...')
-    transform = get_transform(train=False)
+    check_pass = f'checkpoints/'+datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
     if no_log is False:
-        logger = Logger('pT-pbT-tbl2')
+        logger = Logger('pT-pbT-tbl1')
 
-    dataset = DbdImageDataset('data/', transform)
-    dataset_test = DbdImageDataset('data/val', transform)
-
-    data_loader = DataLoader(
-        dataset, batch_size=4, shuffle=True, num_workers=4,
-        collate_fn=collate_fn)
-
-    data_loader_test = DataLoader(
-        dataset_test, batch_size=1, shuffle=False, num_workers=4,
-        collate_fn=collate_fn)
-
+    data_loader, data_loader_test = prep_data()
     print('Creating model...')
     model = init_model()
     model.to(device)
@@ -150,17 +163,18 @@ def main(num_epochs, no_log=False, lr_scheduler_val=True):
             logger.update_acc(acc, epoch+1)
             logger.show_last()
 
-        if epoch > 14 and epoch % 2 == 0:
+        if epoch > 29 and epoch % 5 == 0:
             model.eval()
             torch.save({
-                'model_state_dict': model.model.state_dict(),
+                'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'scheduler_state_dict': lr_sc.state_dict(),
                 'epoch': epoch+1,
-            }, f'checkpoints/checkpoint-{str(epoch+1).zfill(3)}epoch.bin')
+            }, check_pass +
+               f'/checkpoint-{str(epoch+1).zfill(3)}epoch.bin')
 
 
 if __name__ == '__main__':
     total_time = time.time()
-    main(14, no_log=True)
+    main(50, no_log=True)
     print('TOTAL TIME: (t={:0.2f}s)'.format(time.time() - total_time))

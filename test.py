@@ -2,6 +2,7 @@ import os
 import random
 import cv2
 import numpy as np
+import torch
 
 # name = "dbd_img"
 # ext = "jpg"
@@ -17,12 +18,4 @@ import numpy as np
 # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 # print(img.astype(np.float32))
 
-# A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
 
-# a = [[1, 4], [3,2], [0, 5]]
-# print([item for sublist in a for item in sublist])
-# edicts = {'loss_total': 0, 'lr': 1, 'train_time': 2}
-# for key, value in dicts.items():
-#     valu
-a = 231.2929918766021729
-print('This is not sparta. This is {:0.6f}.'.format(a))

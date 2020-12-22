@@ -11,3 +11,5 @@ data/val/boxes/
 data/val/resize_data/
 
 logs/
+
+checkpoints/
